@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SmartFlow GreenCorridor AI | Nagpur Emergency Preemption & Traffic Hub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Ambient Cyber Glows -->
+  <div class="ambient-glow glow-1"></div>
+  <div class="ambient-glow glow-2"></div>
+  <div class="ambient-glow glow-3"></div>
+
+  <!-- Header -->
+  <header class="app-header">
+    <div class="brand">
+      <div class="brand-badge">
+        <span class="pulse-dot"></span>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1 .4-1 1v7c0 .6.4 1 1 1h2"/>
+          <circle cx="7" cy="17" r="2"/>
+          <path d="M9 17h6"/>
+          <circle cx="17" cy="17" r="2"/>
+          <line x1="8" y1="9" x2="12" y2="9"/>
+          <line x1="10" y1="7" x2="10" y2="11"/>
+        </svg>
+      </div>
+      <div>
+        <h1 class="brand-title">SmartFlow <span class="accent-text">GreenCorridor AI</span> <span class="city-tag">Nagpur Smart Transit</span></h1>
+        <p class="brand-subtitle">Emergency Vehicle Signal Preemption & AI Green Wave System (VNIT 2026)</p>
+      </div>
+    </div>
+
+    <div class="header-right">
+      <div class="corridor-status-pill" id="corridorStatusPill">
+        <span class="status-indicator live"></span>
+        <span class="status-text" id="corridorStatusText">CORRIDOR ARMED</span>
+      </div>
+      <div class="system-status-pill">
+        <span class="badge-fps" id="fpsDisplay">60 FPS</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Grid Layout -->
+  <main class="app-layout">
+    
+    <!-- Left Sidebar: Emergency Dispatch & Automated Tests -->
+    <aside class="sidebar-panel">
+      
+      <!-- Rapid Emergency Dispatch Command Center -->
+      <section class="card highlight-card">
+        <div class="card-header">
+          <div class="icon-wrap red-pulse">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+          </div>
+          <h2>Emergency Dispatch Center</h2>
+        </div>
+        <p class="card-desc">Trigger emergency vehicles along the Nagpur Arterial Corridor (Sitabuldi ➔ AIIMS/GMC).</p>
+
+        <div class="dispatch-buttons">
+          <button id="btnDispatchAmbulance" class="btn btn-emergency-red full-width">
+            <span class="btn-icon">🚨</span>
+            <div class="btn-text-group">
+              <span class="btn-primary-text">Dispatch Cardiac Ambulance</span>
+              <span class="btn-sub-text">Code Red (Priority 1) ➔ AIIMS Hospital</span>
+            </div>
+          </button>
+
+          <button id="btnDispatchFire" class="btn btn-emergency-orange full-width mt-2">
+            <span class="btn-icon">🚒</span>
+            <div class="btn-text-group">
+              <span class="btn-primary-text">Dispatch Fire Brigade</span>
+              <span class="btn-sub-text">Code Orange (Priority 2) ➔ Wardha Rd</span>
+            </div>
+          </button>
+        </div>
+      </section>
+
+      <!-- Simulation Engine Controls -->
+      <section class="card">
+        <div class="card-header">
+          <div class="icon-wrap cyan">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          </div>
+          <h2>City Simulation Controls</h2>
+        </div>
+        
+        <div class="control-row-btn">
+          <button id="btnPlayPause" class="btn btn-primary">
+            <span class="btn-icon">▶</span>
+            <span id="playPauseText">Run Simulation</span>
+          </button>
+          <button id="btnStep" class="btn btn-secondary" title="Advance by 1 step">
+            <span>Step (1s)</span>
+          </button>
+          <button id="btnReset" class="btn btn-danger" title="Reset all state">
+            <span>Reset</span>
+          </button>
+        </div>
+
+        <div class="slider-group">
+          <div class="slider-header">
+            <label>Simulation Speed (<span id="speedValue">1.0x</span>)</label>
+          </div>
+          <input type="range" id="simSpeed" min="0.5" max="5.0" step="0.5" value="1.0" class="custom-range">
+        </div>
+
+        <div class="slider-group">
+          <div class="slider-header">
+            <label>Nagpur Rush Hour Traffic Surge</label>
+            <span class="badge-val" id="surgeRateLabel">Normal (0.3/s)</span>
+          </div>
+          <input type="range" id="trafficSurgeRate" min="0.1" max="1.0" step="0.1" value="0.3" class="custom-range">
+        </div>
+      </section>
+
+      <!-- Automated Testing Suite -->
+      <section class="card testing-card">
+        <div class="card-header">
+          <div class="icon-wrap purple">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          </div>
+          <h2>Automated Testing Suite</h2>
+        </div>
+        <p class="card-desc">Verify preemption latency, green wave clearance, and emergency arbitration for judges.</p>
+
+        <div class="test-actions">
+          <button id="btnRunAllTests" class="btn btn-accent full-width">
+            <span>⚡ Run All Unit & Stress Tests</span>
+          </button>
+        </div>
+
+        <div class="test-results-list" id="testResultsList">
+          <div class="test-item" id="test-1">
+            <div class="test-item-left">
+              <span class="test-badge pending">READY</span>
+              <span class="test-name">Preemption Latency Benchmark</span>
+            </div>
+            <span class="test-meta">&lt; 150ms</span>
+          </div>
+
+          <div class="test-item" id="test-2">
+            <div class="test-item-left">
+              <span class="test-badge pending">READY</span>
+              <span class="test-name">Green Wave Pre-Clearance Interlock</span>
+            </div>
+            <span class="test-meta">Node 1 ➔ Node 4</span>
+          </div>
+
+          <div class="test-item" id="test-3">
+            <div class="test-item-left">
+              <span class="test-badge pending">READY</span>
+              <span class="test-name">Multi-Emergency Priority Arbitration</span>
+            </div>
+            <span class="test-meta">P1 Cardiac &gt; P2 Fire</span>
+          </div>
+
+          <div class="test-item" id="test-4">
+            <div class="test-item-left">
+              <span class="test-badge pending">READY</span>
+              <span class="test-name">Post-Emergency Cycle Recovery</span>
+            </div>
+            <span class="test-meta">Balanced Grid</span>
+          </div>
+
+          <div class="test-item" id="test-5">
+            <div class="test-item-left">
+              <span class="test-badge pending">READY</span>
+              <span class="test-name">60s Stress Run & Delay Benchmark</span>
+            </div>
+            <span class="test-meta">&gt; 70% Time Saved</span>
+          </div>
+        </div>
+      </section>
+    </aside>
+
+    <!-- Center & Right: Mission Control Dashboard -->
+    <div class="dashboard-main">
+      
+      <!-- Top Metrics Ribbon -->
+      <div class="metric-ribbon">
+        <div class="stat-card">
+          <div class="stat-label">TRANSIT TIME REDUCTION</div>
+          <div class="stat-value text-emerald" id="timeSavedVal">71.6%</div>
+          <div class="stat-sub">14.8 min ➔ 4.2 min to AIIMS</div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-label">ACTIVE EMERGENCY</div>
+          <div class="stat-value text-rose" id="activeEmgVal">STANDBY</div>
+          <div class="stat-sub" id="activeEmgSub">No active preemption call</div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-label">CORRIDOR GREEN WAVE</div>
+          <div class="stat-value text-cyan" id="greenWaveVal">ARMED</div>
+          <div class="stat-sub">Sitabuldi ➔ AIIMS Gate (2.2 km)</div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-label">GOLDEN HOUR LIVES ASSISTED</div>
+          <div class="stat-value text-amber" id="livesVal">14</div>
+          <div class="stat-sub">Zero bottleneck stoppages</div>
+        </div>
+      </div>
+
+      <!-- Live 2D Corridor Visualizer Canvas -->
+      <div class="canvas-container card">
+        <div class="viewport-header">
+          <div class="vp-title">
+            <span class="live-dot"></span> Nagpur Arterial Emergency Corridor (2.2 km Live Digital Twin)
+            <span class="badge-traffic-mode">🇮🇳 Left-Hand Drive (LHT)</span>
+          </div>
+          <div class="vp-legend">
+            <span class="legend-item"><span class="color-dot bg-green"></span> Green Wave Preempted</span>
+            <span class="legend-item"><span class="color-dot bg-red"></span> Cross Red Interlock</span>
+            <span class="legend-item"><span class="color-dot bg-ambulance"></span> 🚨 Ambulance</span>
+            <span class="legend-item"><span class="color-dot bg-auto"></span> 🛺 Auto / Cabs</span>
+          </div>
+        </div>
+
+        <div class="canvas-wrapper">
+          <canvas id="corridorCanvas" width="960" height="420"></canvas>
+          
+          <!-- Overlay HUD -->
+          <div class="canvas-overlay-hud">
+            <div class="hud-node-badge" id="hudStatusNode">CORRIDOR: SITABULDI ➔ MEDICAL SQ ➔ WARDHA RD ➔ AIIMS/GMC</div>
+            <div class="hud-tti-badge" id="hudTTI">TTI TO AIIMS: <span id="ttiVal">--</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Intersections Telemetry & Live Console -->
+      <div class="analytics-row">
+        <!-- 4 Node Cards -->
+        <div class="card flex-1">
+          <div class="card-header">
+            <div class="icon-wrap green">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+            </div>
+            <h2>Nagpur Intersections Preemption Status</h2>
+          </div>
+
+          <div class="node-cards-grid">
+            <div class="node-status-box" id="boxNode1">
+              <div class="node-box-title">1. Sitabuldi Interchange</div>
+              <div class="node-box-state text-emerald" id="stateNode1">GREEN (CORRIDOR)</div>
+              <div class="node-box-sub" id="queueNode1">Queue: 4 veh | Km 0.3</div>
+            </div>
+
+            <div class="node-status-box" id="boxNode2">
+              <div class="node-box-title">2. Medical Square</div>
+              <div class="node-box-state text-emerald" id="stateNode2">GREEN (CORRIDOR)</div>
+              <div class="node-box-sub" id="queueNode2">Queue: 6 veh | Km 0.9</div>
+            </div>
+
+            <div class="node-status-box" id="boxNode3">
+              <div class="node-box-title">3. Wardha Road Viaduct</div>
+              <div class="node-box-state text-emerald" id="stateNode3">GREEN (CORRIDOR)</div>
+              <div class="node-box-sub" id="queueNode3">Queue: 5 veh | Km 1.5</div>
+            </div>
+
+            <div class="node-status-box" id="boxNode4">
+              <div class="node-box-title">4. AIIMS & GMC Gate</div>
+              <div class="node-box-state text-emerald" id="stateNode4">GREEN (CORRIDOR)</div>
+              <div class="node-box-sub" id="queueNode4">Queue: 2 veh | Km 2.1</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Real-time Decision Console -->
+        <div class="card flex-1">
+          <div class="card-header">
+            <div class="icon-wrap purple">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+            </div>
+            <h2>Preemption Decision & API Telemetry Logs</h2>
+          </div>
+          
+          <div class="console-box" id="consoleLogs">
+            <div class="log-entry info"><span class="log-time">[00:00:00]</span> SmartFlow GreenCorridor Engine initialized for Nagpur City Grid.</div>
+            <div class="log-entry success"><span class="log-time">[00:00:00]</span> Connected Nodes: Sitabuldi (0.3km), Medical Sq (0.9km), Wardha Rd (1.5km), AIIMS (2.1km).</div>
+            <div class="log-entry info"><span class="log-time">[00:00:00]</span> System standard: Indian Left-Hand Traffic (LHT).</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
