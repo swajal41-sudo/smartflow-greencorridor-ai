@@ -1,7 +1,7 @@
-"""Run the traffic management API server."""
-
-import uvicorn
-from src.api.main import app
+"""Entrypoint for SmartFlow I²TMS Server."""
+import sys
+from server import run
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    port = int(sys.argv[1]) if len(sys.argv) > 1 else 8080
+    run(port)

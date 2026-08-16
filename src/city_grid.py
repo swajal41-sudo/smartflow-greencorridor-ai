@@ -1,7 +1,7 @@
 """
 Nagpur Multi-Intersection City Grid & Emergency Vehicle Simulation Model.
 Simulates connected intersections (Sitabuldi, Medical Square, Wardha Rd Viaduct, AIIMS/GMC Hospital Corridor)
-under Indian Left-Hand Traffic (LHT) rules.
+under Indian Traffic rules.
 """
 
 import random
@@ -84,7 +84,7 @@ class IntersectionNode:
         }
 
     def update(self, dt: float, surge_rate: float = 0.3):
-        # Generate cross-traffic & corridor background traffic (Indian Left-Hand Traffic)
+        # Generate cross-traffic & corridor background traffic
         for q_key in self.queues:
             if random.random() < surge_rate * dt:
                 self.queues[q_key] += 1.0
@@ -204,26 +204,29 @@ class NagpurCityGrid:
 
         # Update Grid Intersections
         for node_id, node in self.nodes.items():
-            if highest_priority_ev:
-                # Calculate vehicle relative position to node
+            preempting_ev = None
+            
+            # Find the highest priority EV that is approaching this node
+            for ev in sorted(active_evs, key=lambda x: x.priority):
                 node_progress_pct = (node.km_mark / 2.2) * 100.0
-                dist_pct = node_progress_pct - highest_priority_ev.pos_progress
-
-                # Preempt node if ambulance is approaching within 45% distance ahead
+                dist_pct = node_progress_pct - ev.pos_progress
                 if 0.0 <= dist_pct <= 45.0:
-                    node.is_preempted = True
-                    node.phase = "MAIN_CORRIDOR" # Force Green Wave for corridor
-                    node.preemption_reason = f"🚨 GREEN WAVE: {highest_priority_ev.vehicle_type.upper()} ({highest_priority_ev.ev_id})"
-                elif dist_pct < 0.0:
-                    # Vehicle already passed node -> restore normal cycle with safe recovery
-                    node.is_preempted = False
-                    node.preemption_reason = "RECOVERY: Balanced Cycle"
-                else:
-                    node.is_preempted = False
-                    node.preemption_reason = "STANDBY"
+                    preempting_ev = ev
+                    break
+                    
+            if preempting_ev:
+                node.is_preempted = True
+                node.phase = "MAIN_CORRIDOR" # Force Green Wave for corridor
+                node.preemption_reason = f"🚨 GREEN WAVE: {preempting_ev.vehicle_type.upper()} ({preempting_ev.ev_id})"
             else:
                 node.is_preempted = False
-                node.preemption_reason = "NORMAL ADAPTIVE"
+                # If any active EV has passed the node, we are in recovery
+                if any(ev.pos_progress > (node.km_mark / 2.2) * 100.0 for ev in active_evs):
+                    node.preemption_reason = "RECOVERY: Balanced Cycle"
+                elif active_evs:
+                    node.preemption_reason = "STANDBY"
+                else:
+                    node.preemption_reason = "NORMAL ADAPTIVE"
 
             node.update(dt, self.surge_rate)
 
