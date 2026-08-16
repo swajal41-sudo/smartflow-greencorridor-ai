@@ -261,6 +261,7 @@ def run(port=8080):
         httpd.server_close()
 
 if __name__ == "__main__":
-    port = int(sys.argv[1]) if len(sys.argv) > 1 else 8080
+    env_port = os.environ.get("PORT")
+    port = int(env_port) if env_port else (int(sys.argv[1]) if len(sys.argv) > 1 else 8080)
     run(port)
 
