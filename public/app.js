@@ -299,27 +299,37 @@ function updatePhysicsAndDraw() {
     drawCrosswalk(ctx, nx - crossW / 2, CY - roadH / 2 - 8, crossW, 6);
     drawCrosswalk(ctx, nx - crossW / 2, CY + roadH / 2 + 2, crossW, 6);
 
-    // Cross street stop lines (Southbound on Left/Top, Northbound on Right/Bottom)
-    ctx.fillStyle = isCrossGreen ? "rgba(16, 185, 129, 0.6)" : "rgba(239, 68, 68, 0.8)";
+    // Illuminated Stop Bars for Left-Hand Traffic
+    // 1. Eastbound stop bar (Bottom-Left)
+    ctx.fillStyle = isCorGreen ? "rgba(16, 185, 129, 0.7)" : "rgba(239, 68, 68, 0.9)";
+    ctx.fillRect(nx - crossW / 2 - 3, CY + 1, 3, roadH / 2 - 2);
+
+    // 2. Westbound stop bar (Top-Right)
+    ctx.fillStyle = isCorGreen ? "rgba(16, 185, 129, 0.7)" : "rgba(239, 68, 68, 0.9)";
+    ctx.fillRect(nx + crossW / 2, CY - roadH / 2 + 1, 3, roadH / 2 - 2);
+
+    // 3. Southbound cross-street stop bar (Top-Left)
+    ctx.fillStyle = isCrossGreen ? "rgba(16, 185, 129, 0.7)" : "rgba(239, 68, 68, 0.9)";
     ctx.fillRect(nx - crossW / 2, CY - roadH / 2 - 3, crossW / 2 - 2, 3);
+
+    // 4. Northbound cross-street stop bar (Bottom-Right)
+    ctx.fillStyle = isCrossGreen ? "rgba(16, 185, 129, 0.7)" : "rgba(239, 68, 68, 0.9)";
     ctx.fillRect(nx + 2, CY + roadH / 2, crossW / 2 - 2, 3);
 
-    // Main corridor stop lines (Eastbound on Left/Bottom, Westbound on Right/Top)
-    if (!isCorGreen) {
-      ctx.fillStyle = "rgba(239, 68, 68, 0.8)";
-      ctx.fillRect(nx - crossW / 2 - 3, CY, 3, roadH / 2);
-      ctx.fillRect(nx + crossW / 2, CY - roadH / 2, 3, roadH / 2);
-    }
-
-    drawSignal(ctx, nx + crossW / 2 + 5, CY - roadH / 2 - 22, isCorGreen, isPre);
-    drawSignal(ctx, nx - crossW / 2 - 22, CY + roadH / 2 + 4, isCorGreen, isPre);
+    // Realistic 3-Lens Traffic Signals positioned at each approach
+    // Eastbound corridor signal (Bottom-Left)
+    drawSignal(ctx, nx - crossW / 2 - 18, CY + roadH / 2 + 4, isCorGreen, isPre);
+    // Westbound corridor signal (Top-Right)
+    drawSignal(ctx, nx + crossW / 2 + 5, CY - roadH / 2 - 36, isCorGreen, isPre);
+    // Southbound cross signal (Top-Left)
+    drawSignal(ctx, nx - crossW / 2 - 18, CY - roadH / 2 - 36, isCrossGreen, false);
+    // Northbound cross signal (Bottom-Right)
     drawSignal(ctx, nx + crossW / 2 + 5, CY + roadH / 2 + 4, isCrossGreen, false);
-    drawSignal(ctx, nx - crossW / 2 - 22, CY - roadH / 2 - 22, isCrossGreen, false);
 
     ctx.fillStyle = isPre ? "#f43f5e" : "#38bdf8";
     ctx.font = `bold ${Math.max(9, W * 0.01)}px Inter`;
     ctx.textAlign = "center";
-    ctx.fillText(NODE_NAMES[idx], nx, CY - roadH / 2 - 28);
+    ctx.fillText(NODE_NAMES[idx], nx, CY - roadH / 2 - 42);
   });
 
   drawHospital(ctx, nodeX[3] + crossW / 2 + 10, 15);
@@ -479,11 +489,35 @@ function drawNode(ctx, x, CY, isPre, tti) {
 }
 
 function drawSignal(ctx, x, y, isGreen, isPre) {
-  ctx.fillStyle = "#1e293b"; ctx.strokeStyle = isPre ? "#ef4444" : "rgba(255,255,255,0.15)"; ctx.lineWidth = 1.2;
-  ctx.beginPath(); ctx.roundRect(x, y, 18, 18, 4); ctx.fill(); ctx.stroke();
-  const c = isGreen ? "#10b981" : "#ef4444";
-  ctx.fillStyle = c; ctx.shadowColor = c; ctx.shadowBlur = isPre ? 8 : 4;
-  ctx.beginPath(); ctx.arc(x + 9, y + 9, 5, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0;
+  // Realistic 3-lens vertical signal head (Red / Amber / Green)
+  ctx.save();
+  ctx.fillStyle = "#0f172a";
+  ctx.strokeStyle = isPre ? "#f43f5e" : "rgba(255,255,255,0.2)";
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.roundRect(x, y, 13, 30, 3);
+  ctx.fill();
+  ctx.stroke();
+
+  const redOn = !isGreen;
+  const greenOn = isGreen;
+
+  // Red Lens (Top)
+  ctx.fillStyle = redOn ? (isPre ? "#f43f5e" : "#ef4444") : "rgba(239, 68, 68, 0.2)";
+  if (redOn) { ctx.shadowColor = isPre ? "#f43f5e" : "#ef4444"; ctx.shadowBlur = isPre ? 8 : 4; }
+  ctx.beginPath(); ctx.arc(x + 6.5, y + 5.5, 3, 0, Math.PI * 2); ctx.fill();
+  ctx.shadowBlur = 0;
+
+  // Amber Lens (Middle)
+  ctx.fillStyle = "rgba(245, 158, 11, 0.2)";
+  ctx.beginPath(); ctx.arc(x + 6.5, y + 15, 3, 0, Math.PI * 2); ctx.fill();
+
+  // Green Lens (Bottom)
+  ctx.fillStyle = greenOn ? "#10b981" : "rgba(16, 185, 129, 0.2)";
+  if (greenOn) { ctx.shadowColor = "#10b981"; ctx.shadowBlur = 6; }
+  ctx.beginPath(); ctx.arc(x + 6.5, y + 24.5, 3, 0, Math.PI * 2); ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.restore();
 }
 
 function drawHospital(ctx, x, y) {
