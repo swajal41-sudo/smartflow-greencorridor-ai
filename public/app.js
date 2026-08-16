@@ -71,6 +71,11 @@ window.addEventListener("DOMContentLoaded", () => {
   requestAnimationFrame(renderLoop);
   startVisionPolling();
   loadTriageBoard();
+  window.addEventListener("resize", () => {
+    setupCanvas();
+    setupCCTVCanvas();
+    setupHeatmapCanvas();
+  });
 });
 
 // ═══ NAVIGATION ═══
@@ -175,30 +180,69 @@ function setupEventListeners() {
 function initTrafficFleet() {
   corridorVehicles = [];
   crossVehicles = [];
-    const lanes = [
-      { dir: "east", laneId: 0, targetYOffset: -12, maxSpeed: 1.2 },
-      { dir: "east", laneId: 1, targetYOffset: -32, maxSpeed: 1.0 },
-      { dir: "west", laneId: 2, targetYOffset: 12, maxSpeed: 1.2 },
-      { dir: "west", laneId: 3, targetYOffset: 32, maxSpeed: 1.0 }
-    ];
+  
+  // Left Hand Traffic (Nagpur / India):
+  // Eastbound (Sitabuldi -> AIIMS) travels on the BOTTOM lanes (CY + 14, CY + 34)
+  // Westbound (AIIMS -> Sitabuldi) travels on the TOP lanes (CY - 14, CY - 34)
+  const lanes = [
+    { dir: "east", laneId: 0, targetYOffset: 14, maxSpeed: 1.3 },
+    { dir: "east", laneId: 1, targetYOffset: 34, maxSpeed: 1.05 },
+    { dir: "west", laneId: 2, targetYOffset: -14, maxSpeed: 1.3 },
+    { dir: "west", laneId: 3, targetYOffset: -34, maxSpeed: 1.05 }
+  ];
+
   lanes.forEach(lane => {
     for (let i = 0; i < 4; i++) {
-      const initX = i * 240 + Math.random() * 60;
+      const initX = (i * 240 + Math.random() * 80) % 960;
+      const spd = lane.maxSpeed * (0.85 + Math.random() * 0.3);
       corridorVehicles.push({
-        id: Math.random(), type: VEHICLE_TYPES[Math.floor(Math.random() * 5)],
-        dir: lane.dir, laneId: lane.laneId,
+        id: Math.random(),
+        type: VEHICLE_TYPES[Math.floor(Math.random() * 5)],
+        dir: lane.dir,
+        laneId: lane.laneId,
         x: lane.dir === "east" ? initX : (960 - initX),
-        yOffset: lane.targetYOffset, targetYOffset: lane.targetYOffset,
-        speed: lane.maxSpeed * (0.85 + Math.random() * 0.3),
-        maxSpeed: lane.maxSpeed * (0.85 + Math.random() * 0.3),
-        currentSpeed: 0, length: 26, width: 14, isYielding: false
+        yOffset: lane.targetYOffset,
+        targetYOffset: lane.targetYOffset,
+        speed: spd,
+        maxSpeed: spd,
+        currentSpeed: spd * 0.7,
+        length: 26,
+        width: 14
       });
     }
   });
+
+  // Cross streets (4 junctions):
+  // Southbound (Top -> Bottom) travels on the LEFT / WEST side (laneXOffset: -14)
+  // Northbound (Bottom -> Top) travels on the RIGHT / EAST side (laneXOffset: +14)
   for (let ni = 0; ni < 4; ni++) {
     for (let i = 0; i < 2; i++) {
-      crossVehicles.push({ id: Math.random(), nodeIdx: ni, dir: "south", laneXOffset: 16, y: i * 180 + Math.random() * 40, speed: 0.8 + Math.random() * 0.4, maxSpeed: 0.8 + Math.random() * 0.4, currentSpeed: 0.8, length: 22, width: 13, stopped: false });
-      crossVehicles.push({ id: Math.random(), nodeIdx: ni, dir: "north", laneXOffset: -16, y: 420 - (i * 180 + Math.random() * 40), speed: 0.8 + Math.random() * 0.4, maxSpeed: 0.8 + Math.random() * 0.4, currentSpeed: 0.8, length: 22, width: 13, stopped: false });
+      const spd1 = 0.85 + Math.random() * 0.35;
+      const spd2 = 0.85 + Math.random() * 0.35;
+      crossVehicles.push({
+        id: Math.random(),
+        nodeIdx: ni,
+        dir: "south",
+        laneXOffset: -14,
+        y: (i * 200 + Math.random() * 50) % 420,
+        speed: spd1,
+        maxSpeed: spd1,
+        currentSpeed: spd1 * 0.7,
+        length: 22,
+        width: 13
+      });
+      crossVehicles.push({
+        id: Math.random(),
+        nodeIdx: ni,
+        dir: "north",
+        laneXOffset: 14,
+        y: (420 - (i * 200 + Math.random() * 50)) % 420,
+        speed: spd2,
+        maxSpeed: spd2,
+        currentSpeed: spd2 * 0.7,
+        length: 22,
+        width: 13
+      });
     }
   }
 }
@@ -223,8 +267,8 @@ function updatePhysicsAndDraw() {
   const ctx = getCorridorCtx();
   if (!canvas || !ctx) return;
   const rect = canvas.getBoundingClientRect();
-  const W = rect.width, H = rect.height, CY = H / 2;
-  const roadH = H * 0.28, crossW = W * 0.088;
+  const W = rect.width || 960, H = rect.height || 420, CY = H / 2;
+  const roadH = Math.max(88, H * 0.28), crossW = Math.max(50, W * 0.088);
   const nodeX = NODE_X_RATIO.map(r => r * W);
 
   ctx.fillStyle = "#060a12"; ctx.fillRect(0, 0, W, H);
@@ -255,12 +299,14 @@ function updatePhysicsAndDraw() {
     drawCrosswalk(ctx, nx - crossW / 2, CY - roadH / 2 - 8, crossW, 6);
     drawCrosswalk(ctx, nx - crossW / 2, CY + roadH / 2 + 2, crossW, 6);
 
-    ctx.fillStyle = isCrossGreen ? "rgba(16, 185, 129, 0.4)" : "rgba(239, 68, 68, 0.6)";
-    ctx.fillRect(nx - crossW / 2, CY - roadH / 2 - 2, crossW / 2 - 2, 3);
-    ctx.fillRect(nx + 2, CY + roadH / 2 - 1, crossW / 2 - 2, 3);
+    // Cross street stop lines (Southbound on Left/Top, Northbound on Right/Bottom)
+    ctx.fillStyle = isCrossGreen ? "rgba(16, 185, 129, 0.6)" : "rgba(239, 68, 68, 0.8)";
+    ctx.fillRect(nx - crossW / 2, CY - roadH / 2 - 3, crossW / 2 - 2, 3);
+    ctx.fillRect(nx + 2, CY + roadH / 2, crossW / 2 - 2, 3);
 
+    // Main corridor stop lines (Eastbound on Left/Bottom, Westbound on Right/Top)
     if (!isCorGreen) {
-      ctx.fillStyle = "rgba(239, 68, 68, 0.6)";
+      ctx.fillStyle = "rgba(239, 68, 68, 0.8)";
       ctx.fillRect(nx - crossW / 2 - 3, CY, 3, roadH / 2);
       ctx.fillRect(nx + crossW / 2, CY - roadH / 2, 3, roadH / 2);
     }
@@ -271,13 +317,14 @@ function updatePhysicsAndDraw() {
     drawSignal(ctx, nx - crossW / 2 - 22, CY - roadH / 2 - 22, isCrossGreen, false);
 
     ctx.fillStyle = isPre ? "#f43f5e" : "#38bdf8";
-    ctx.font = `bold ${Math.max(9, W * 0.01)}px Plus Jakarta Sans`;
+    ctx.font = `bold ${Math.max(9, W * 0.01)}px Inter`;
     ctx.textAlign = "center";
     ctx.fillText(NODE_NAMES[idx], nx, CY - roadH / 2 - 28);
   });
 
   drawHospital(ctx, nodeX[3] + crossW / 2 + 10, 15);
 
+  // Active Emergency Vehicle (Eastbound on bottom inner lane CY + 14)
   const activeEV = gridState.active_emergencies?.find(e => e.status === "in_transit" || e.status === "dispatched");
   let evX = null;
   if (activeEV) {
@@ -285,64 +332,125 @@ function updatePhysicsAndDraw() {
     evX = cStart + (activeEV.pos_progress / 100) * (cEnd - cStart);
     const beamLen = Math.min(cEnd - evX, W * 0.35);
     if (beamLen > 0) {
-      const grad = ctx.createLinearGradient(evX, CY, evX + beamLen, CY);
-      grad.addColorStop(0, "rgba(16, 185, 129, 0.4)"); grad.addColorStop(1, "rgba(16, 185, 129, 0.0)");
-      ctx.fillStyle = grad; ctx.fillRect(evX, CY - roadH / 2, beamLen, roadH);
+      const grad = ctx.createLinearGradient(evX, CY + 14, evX + beamLen, CY + 14);
+      grad.addColorStop(0, "rgba(16, 185, 129, 0.4)");
+      grad.addColorStop(1, "rgba(16, 185, 129, 0.0)");
+      ctx.fillStyle = grad;
+      ctx.fillRect(evX, CY, beamLen, roadH / 2);
     }
-    drawSirenWaves(ctx, evX, CY + roadH * 0.2);
+    drawSirenWaves(ctx, evX, CY + 14);
   }
 
-  // Cross vehicles
+  // 1. Cross Vehicles Physics & Drawing
   crossVehicles.forEach((veh, vi) => {
     const nx = nodeX[veh.nodeIdx];
     const nd = gridState.nodes?.[NODE_KEYS[veh.nodeIdx]];
     const isCG = nd ? (nd.phase === "CROSS_STREET" && !nd.is_preempted) : false;
-    const stopY = veh.dir === "south" ? (CY - roadH / 2 - 12) : (CY + roadH / 2 + 12);
-    let ts = veh.maxSpeed, dl = 999, ds = 999;
+    const stopY = veh.dir === "south" ? (CY - roadH / 2 - 14) : (CY + roadH / 2 + 14);
+    let targetSpeed = veh.maxSpeed;
+
+    // Check vehicle ahead in same lane
+    let distToLeader = 999;
     crossVehicles.forEach((o, oi) => {
       if (vi === oi || o.nodeIdx !== veh.nodeIdx || o.dir !== veh.dir) return;
-      if (veh.dir === "south" && o.y > veh.y) dl = Math.min(dl, o.y - veh.y);
-      else if (veh.dir === "north" && o.y < veh.y) dl = Math.min(dl, veh.y - o.y);
+      if (veh.dir === "south" && o.y > veh.y) distToLeader = Math.min(distToLeader, o.y - veh.y);
+      else if (veh.dir === "north" && o.y < veh.y) distToLeader = Math.min(distToLeader, veh.y - o.y);
     });
-    if (veh.dir === "south" && !isCG && veh.y < stopY) ds = stopY - veh.y;
-    else if (veh.dir === "north" && !isCG && veh.y > stopY) ds = veh.y - stopY;
-    const eff = Math.min(dl - 28, ds);
-    if (eff < 8) ts = 0; else if (eff < 35) ts = veh.maxSpeed * (eff / 35);
-    veh.currentSpeed = ts;
-    if (veh.dir === "south") { veh.y += ts; if (veh.y > H + 40) veh.y = -40; drawVehicle(ctx, nx + veh.laneXOffset, veh.y, Math.PI / 2, "auto"); }
-    else { veh.y -= ts; if (veh.y < -40) veh.y = H + 40; drawVehicle(ctx, nx + veh.laneXOffset, veh.y, -Math.PI / 2, "auto"); }
+
+    // Check stop line if light is red
+    let distToStop = 999;
+    if (!isCG) {
+      if (veh.dir === "south" && veh.y < stopY) distToStop = stopY - veh.y;
+      else if (veh.dir === "north" && veh.y > stopY) distToStop = veh.y - stopY;
+    }
+
+    const effectiveDist = Math.min(distToLeader - 28, distToStop);
+    if (effectiveDist < 10) targetSpeed = 0;
+    else if (effectiveDist < 50) targetSpeed = veh.maxSpeed * (effectiveDist / 50);
+
+    // Smooth acceleration / braking
+    veh.currentSpeed += (targetSpeed - veh.currentSpeed) * 0.12;
+
+    if (veh.dir === "south") {
+      veh.y += veh.currentSpeed;
+      if (veh.y > H + 40) { veh.y = -40; veh.currentSpeed = veh.maxSpeed * 0.7; }
+      drawVehicle(ctx, nx + veh.laneXOffset, veh.y, Math.PI / 2, "auto");
+    } else {
+      veh.y -= veh.currentSpeed;
+      if (veh.y < -40) { veh.y = H + 40; veh.currentSpeed = veh.maxSpeed * 0.7; }
+      drawVehicle(ctx, nx + veh.laneXOffset, veh.y, -Math.PI / 2, "auto");
+    }
   });
 
-  // Corridor vehicles
+  // 2. Corridor Vehicles Physics & Drawing
   corridorVehicles.forEach((veh, vi) => {
-    let ts = veh.maxSpeed, dl = 999, dss = 999;
+    let targetSpeed = veh.maxSpeed;
+
+    // Check vehicle ahead in same lane
+    let distToLeader = 999;
     corridorVehicles.forEach((o, oi) => {
       if (vi === oi || o.laneId !== veh.laneId) return;
-      if (veh.dir === "east") { let d = o.x - veh.x; if (d < 0) d += (W + 80); dl = Math.min(dl, d); }
-      else { let d = veh.x - o.x; if (d < 0) d += (W + 80); dl = Math.min(dl, d); }
-    });
-    nodeX.forEach((nx, idx) => {
-      const nd = gridState.nodes?.[NODE_KEYS[idx]];
-      const isCG = nd ? (nd.phase === "MAIN_CORRIDOR" || nd.is_preempted) : true;
-      if (!isCG) {
-        if (veh.dir === "east" && veh.x < (nx - crossW / 2 - 10)) dss = Math.min(dss, (nx - crossW / 2 - 10) - veh.x);
-        else if (veh.dir === "west" && veh.x > (nx + crossW / 2 + 10)) dss = Math.min(dss, veh.x - (nx + crossW / 2 + 10));
+      if (veh.dir === "east") {
+        if (o.x > veh.x) distToLeader = Math.min(distToLeader, o.x - veh.x);
+      } else {
+        if (o.x < veh.x) distToLeader = Math.min(distToLeader, veh.x - o.x);
       }
     });
+
+    // Check signal stop lines ahead
+    let distToSignal = 999;
+    nodeX.forEach((nx, idx) => {
+      const nd = gridState.nodes?.[NODE_KEYS[idx]];
+      const isCorridorGreen = nd ? (nd.phase === "MAIN_CORRIDOR" || nd.is_preempted) : true;
+      if (!isCorridorGreen) {
+        if (veh.dir === "east") {
+          const stopX = nx - crossW / 2 - 14;
+          if (veh.x < stopX) distToSignal = Math.min(distToSignal, stopX - veh.x);
+        } else {
+          const stopX = nx + crossW / 2 + 14;
+          if (veh.x > stopX) distToSignal = Math.min(distToSignal, veh.x - stopX);
+        }
+      }
+    });
+
+    // Yield to approaching Emergency Vehicle (EV is traveling Eastbound on inner lane CY + 14)
     if (activeEV && evX !== null && veh.dir === "east") {
-      const dist = veh.x - evX;
-      if (dist > -15 && dist < 220) { veh.targetYOffset = -34; ts = veh.maxSpeed * 0.45; }
-      else veh.targetYOffset = veh.laneId === 0 ? -12 : -30;
+      const distFromEV = veh.x - evX;
+      if (distFromEV > -20 && distFromEV < 240) {
+        veh.targetYOffset = 34; // Pull over to outer lane
+        targetSpeed = veh.maxSpeed * 0.5; // Slow down to yield
+      } else {
+        veh.targetYOffset = veh.laneId === 0 ? 14 : 34;
+      }
+    } else {
+      veh.targetYOffset = (veh.laneId === 0 || veh.laneId === 2) ? (veh.dir === "east" ? 14 : -14) : (veh.dir === "east" ? 34 : -34);
     }
+
+    // Smooth lane change interpolation
     veh.yOffset += (veh.targetYOffset - veh.yOffset) * 0.08;
-    const eff = Math.min(dl - 34, dss);
-    if (eff < 8) ts = 0; else if (eff < 45) ts = veh.maxSpeed * (eff / 45);
-    veh.currentSpeed = ts;
-    if (veh.dir === "east") { veh.x += ts; if (veh.x > W + 40) veh.x = -40; drawVehicle(ctx, veh.x, CY + veh.yOffset, 0, veh.type); }
-    else { veh.x -= ts; if (veh.x < -40) veh.x = W + 40; drawVehicle(ctx, veh.x, CY + veh.yOffset, Math.PI, veh.type); }
+
+    const effectiveDist = Math.min(distToLeader - 32, distToSignal);
+    if (effectiveDist < 10) targetSpeed = 0;
+    else if (effectiveDist < 55) targetSpeed = veh.maxSpeed * (effectiveDist / 55);
+
+    // Smooth acceleration / braking
+    veh.currentSpeed += (targetSpeed - veh.currentSpeed) * 0.12;
+
+    if (veh.dir === "east") {
+      veh.x += veh.currentSpeed;
+      if (veh.x > W + 40) { veh.x = -40; veh.currentSpeed = veh.maxSpeed * 0.7; }
+      drawVehicle(ctx, veh.x, CY + veh.yOffset, 0, veh.type);
+    } else {
+      veh.x -= veh.currentSpeed;
+      if (veh.x < -40) { veh.x = W + 40; veh.currentSpeed = veh.maxSpeed * 0.7; }
+      drawVehicle(ctx, veh.x, CY + veh.yOffset, Math.PI, veh.type);
+    }
   });
 
-  if (activeEV && evX !== null) drawEV(ctx, evX, CY - 14, activeEV.vehicle_type);
+  // Draw Emergency Vehicle in Eastbound inner lane (CY + 14)
+  if (activeEV && evX !== null) {
+    drawEV(ctx, evX, CY + 14, activeEV.vehicle_type);
+  }
 }
 
 // ═══ DRAWING HELPERS ═══
