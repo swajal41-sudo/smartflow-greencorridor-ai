@@ -622,13 +622,23 @@ function toggleSimulation() {
     if (txt) txt.innerText = "Run Simulation";
     if (btn) { btn.classList.remove("btn-danger"); btn.classList.add("btn-primary"); }
     logToConsole("Paused.", "warning");
-    clearInterval(simInterval);
+    clearTimeout(simInterval);
   }
 }
 
 function restartInterval() {
-  clearInterval(simInterval);
-  simInterval = setInterval(() => stepSimulation(1.0), Math.max(50, Math.floor(1000 / simSpeed)));
+  clearTimeout(simInterval);
+  scheduleNextStep();
+}
+
+function scheduleNextStep() {
+  if (!isRunning) return;
+  const delay = Math.max(50, Math.floor(1000 / simSpeed));
+  simInterval = setTimeout(async () => {
+    if (!isRunning) return;
+    await stepSimulation(1.0);
+    scheduleNextStep();
+  }, delay);
 }
 
 async function stepSimulation(dt = 1.0) {
@@ -646,7 +656,7 @@ async function stepSimulation(dt = 1.0) {
 
 async function resetSimulation() {
   isRunning = false;
-  clearInterval(simInterval);
+  clearTimeout(simInterval);
   const txt = $("playPauseText"), btn = $("btnPlayPause");
   if (txt) txt.innerText = "Run Simulation";
   if (btn) { btn.classList.remove("btn-danger"); btn.classList.add("btn-primary"); }
