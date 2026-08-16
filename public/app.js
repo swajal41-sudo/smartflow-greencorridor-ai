@@ -691,6 +691,8 @@ async function dispatchEmergency(type, priority) {
 function updateState(state) {
   if (!state) return;
   gridState = state;
+  
+  document.querySelectorAll(".skeleton-text").forEach(el => el.classList.remove("skeleton-text"));
 
   setText("timeSavedVal", `${state.avg_delay_reduction_pct}%`);
   setText("livesVal", state.lives_assisted);

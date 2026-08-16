@@ -614,3 +614,18 @@ body {
   .analytics-row { flex-direction: column; }
   .app-layout, .vision-layout, .heatmap-layout, .citizen-layout, .tests-layout { padding: 12px 14px 24px; }
 }
+
+/* Skeleton Loading Animation */
+.skeleton-text {
+  color: transparent !important;
+  background: linear-gradient(90deg, var(--surface-hover) 25%, var(--border-color) 50%, var(--surface-hover) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s infinite;
+  border-radius: 4px;
+  user-select: none;
+}
+
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
