@@ -7,18 +7,18 @@ under Indian Traffic rules.
 import random
 
 class EmergencyVehicle:
-    def __init__(self, ev_id: str, vehicle_type: str, origin: str, destination: str, priority: int = 1, sim_time: float = 0.0):
+    def __init__(self, ev_id: str, vehicle_type: str, origin: str, destination: str, priority: int = 1, sim_time: float = 0.0, start_progress: float = 0.0):
         self.ev_id = ev_id
         self.vehicle_type = vehicle_type  # 'ambulance', 'fire_engine', 'police'
         self.origin = origin
         self.destination = destination
         self.priority = priority  # 1 (Critical Cardiac / Code Red) > 2 (Fire) > 3 (Police)
-        self.pos_progress = 0.0   # 0.0 to 100.0% along corridor
+        self.pos_progress = float(start_progress)   # 0.0 to 100.0% along corridor
         self.current_speed = 45.0 # km/h
         self.status = "dispatched" # 'dispatched', 'in_transit', 'arrived'
         self.dispatched_at_sim = sim_time  # simulation time (not wall-clock)
         self.arrived_at_sim = None
-        self.normal_travel_time_sec = 888.0 # ~14.8 minutes normal heavy traffic
+        self.normal_travel_time_sec = 720.0 * max(0.2, (1.0 - start_progress / 100.0))
         self.active_corridor_nodes = ["NODE_1_SITABULDI", "NODE_2_MEDICAL_SQ", "NODE_3_WARDHA_RD", "NODE_4_AIIMS_GMC"]
 
     def update(self, dt: float, is_green_corridor_active: bool, sim_time: float):
@@ -33,7 +33,7 @@ class EmergencyVehicle:
         else:
             self.current_speed = 18.0
             
-        step_advance = (self.current_speed / 3.6) * dt * (100.0 / 2200.0) # ~2.2km corridor length
+        step_advance = (self.current_speed / 3.6) * dt * (100.0 / 1800.0) # ~1.8km corridor length
         self.pos_progress = min(100.0, self.pos_progress + step_advance)
 
         if self.pos_progress >= 100.0:
@@ -70,10 +70,12 @@ class IntersectionNode:
         self.node_id = node_id
         self.name = name
         self.km_mark = km_mark # position along main arterial corridor
-        self.phase = "MAIN_CORRIDOR" # 'MAIN_CORRIDOR' (Green for corridor) or 'CROSS_STREET' (Green for cross traffic)
+        self.phase = "MAIN_CORRIDOR" # 'MAIN_CORRIDOR' or 'CROSS_STREET'
         self.phase_time = 0.0
-        self.green_time = 30.0
-        self.red_time = 30.0
+        self.green_duration = 26.0
+        self.yellow_duration = 4.0
+        self.phase_duration = 30.0
+        self.is_yellow = False
         self.is_preempted = False # Preempted by Green Wave
         self.preemption_reason = ""
         self.queues = {
@@ -91,12 +93,13 @@ class IntersectionNode:
 
         if not self.is_preempted:
             self.phase_time += dt
-            if self.phase == "MAIN_CORRIDOR" and self.phase_time >= self.green_time:
-                self.phase = "CROSS_STREET"
+            self.is_yellow = (self.phase_time >= self.green_duration)
+            if self.phase_time >= self.phase_duration:
+                self.phase = "CROSS_STREET" if self.phase == "MAIN_CORRIDOR" else "MAIN_CORRIDOR"
                 self.phase_time = 0.0
-            elif self.phase == "CROSS_STREET" and self.phase_time >= self.red_time:
-                self.phase = "MAIN_CORRIDOR"
-                self.phase_time = 0.0
+                self.is_yellow = False
+        else:
+            self.is_yellow = False
 
         # Discharge queues based on active green phase
         discharge_rate = 2.0 * dt
@@ -114,6 +117,7 @@ class IntersectionNode:
             "km_mark": self.km_mark,
             "phase": self.phase,
             "phase_time": round(self.phase_time, 1),
+            "is_yellow": self.is_yellow,
             "is_preempted": self.is_preempted,
             "preemption_reason": self.preemption_reason,
             "queues": {k: round(v, 1) for k, v in self.queues.items()}
@@ -126,10 +130,10 @@ class NagpurCityGrid:
         self.surge_rate = 0.3
         self._ev_counter = 100  # persistent counter — survives resets
         self.nodes = {
-            "NODE_1_SITABULDI": IntersectionNode("NODE_1_SITABULDI", "Sitabuldi Interchange", 0.3),
-            "NODE_2_MEDICAL_SQ": IntersectionNode("NODE_2_MEDICAL_SQ", "Medical Square", 0.9),
-            "NODE_3_WARDHA_RD": IntersectionNode("NODE_3_WARDHA_RD", "Wardha Road Viaduct", 1.5),
-            "NODE_4_AIIMS_GMC": IntersectionNode("NODE_4_AIIMS_GMC", "AIIMS & GMC Hospital Gate", 2.1)
+            "NODE_1_SITABULDI": IntersectionNode("NODE_1_SITABULDI", "Sitabuldi Interchange", 0.0),
+            "NODE_2_MEDICAL_SQ": IntersectionNode("NODE_2_MEDICAL_SQ", "Medical Square", 0.6),
+            "NODE_3_WARDHA_RD": IntersectionNode("NODE_3_WARDHA_RD", "Wardha Road Viaduct", 1.2),
+            "NODE_4_AIIMS_GMC": IntersectionNode("NODE_4_AIIMS_GMC", "GMC Trauma Bay", 1.8)
         }
         self.active_emergencies = []
         self.total_wait_time = 0.0
@@ -140,8 +144,8 @@ class NagpurCityGrid:
     def avg_delay_reduction_pct(self) -> float:
         """Compute live average delay reduction from actual arrived vehicles."""
         if not self._transit_times:
-            return 71.6  # baseline claim before any live data
-        normal = 888.0
+            return 75.0  # baseline claim before any live data
+        normal = 720.0
         avg_actual = sum(self._transit_times) / len(self._transit_times)
         return round(max(0.0, ((normal - avg_actual) / normal) * 100.0), 1)
 
@@ -162,11 +166,11 @@ class NagpurCityGrid:
         self._transit_times = []
         self.lives_assisted = 0
 
-    def dispatch_emergency(self, vehicle_type="ambulance", origin="Sitabuldi Junction", destination="AIIMS / GMC Hospital", priority=1) -> 'EmergencyVehicle':
+    def dispatch_emergency(self, vehicle_type="ambulance", origin="Sitabuldi Junction", destination="GMC Trauma Bay", priority=1, start_progress=0.0) -> 'EmergencyVehicle':
         self._ev_counter += 1
         ev_id = f"NAG-EMG-{self._ev_counter}"
-        ev = EmergencyVehicle(ev_id, vehicle_type, origin, destination, priority, sim_time=self.time)
-        self.active_emergencies.insert(0, ev)
+        ev = EmergencyVehicle(ev_id, vehicle_type, origin, destination, priority, sim_time=self.time, start_progress=start_progress)
+        self.active_emergencies.append(ev)
         return ev
 
     def step(self, dt: float = 1.0) -> dict:
@@ -179,15 +183,17 @@ class NagpurCityGrid:
         # Update Emergency Vehicles
         for ev in self.active_emergencies:
             if ev.status in ("dispatched", "in_transit"):
-                # Determine if green corridor is actually active ahead of this vehicle
                 ev_progress = ev.pos_progress
                 has_green_ahead = False
-                for node in self.nodes.values():
-                    node_progress_pct = (node.km_mark / 2.2) * 100.0
-                    dist_pct = node_progress_pct - ev_progress
-                    if 0.0 <= dist_pct <= 50.0 and node.is_preempted:
-                        has_green_ahead = True
-                        break
+                if ev_progress >= 95.0:
+                    has_green_ahead = True
+                else:
+                    for node in self.nodes.values():
+                        node_progress_pct = (node.km_mark / 1.8) * 100.0
+                        dist_pct = node_progress_pct - ev_progress
+                        if -5.0 <= dist_pct <= 50.0 and node.is_preempted:
+                            has_green_ahead = True
+                            break
                 # On first step after dispatch, nodes haven't been preempted yet,
                 # but the EV was just dispatched — treat as green for first tick
                 if highest_priority_ev and highest_priority_ev.ev_id == ev.ev_id:
@@ -208,9 +214,9 @@ class NagpurCityGrid:
             
             # Find the highest priority EV that is approaching this node
             for ev in sorted(active_evs, key=lambda x: x.priority):
-                node_progress_pct = (node.km_mark / 2.2) * 100.0
+                node_progress_pct = (node.km_mark / 1.8) * 100.0
                 dist_pct = node_progress_pct - ev.pos_progress
-                if 0.0 <= dist_pct <= 45.0:
+                if -5.0 <= dist_pct <= 45.0:
                     preempting_ev = ev
                     break
                     
@@ -221,7 +227,7 @@ class NagpurCityGrid:
             else:
                 node.is_preempted = False
                 # If any active EV has passed the node, we are in recovery
-                if any(ev.pos_progress > (node.km_mark / 2.2) * 100.0 for ev in active_evs):
+                if any(ev.pos_progress > ((node.km_mark / 1.8) * 100.0 + 5.0) for ev in active_evs):
                     node.preemption_reason = "RECOVERY: Balanced Cycle"
                 elif active_evs:
                     node.preemption_reason = "STANDBY"

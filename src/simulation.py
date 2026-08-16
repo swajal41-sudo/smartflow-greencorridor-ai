@@ -1,5 +1,7 @@
 """Traffic simulation module - generates vehicle flows through intersections."""
 
+import random
+
 
 class Vehicle:
     def __init__(self, id: int, approach: str, arrival_time: float):
@@ -31,7 +33,6 @@ class IntersectionSimulator:
         # Generate vehicles (Poisson-like, ~2 per sec per approach)
         for approach in self.queues:
             # Random vehicle generation
-            import random
             if random.random() < 0.3 * dt:
                 self.vehicles_generated[approach] += 1
                 self.queues[approach] += 1
@@ -52,20 +53,15 @@ class IntersectionSimulator:
             move_rate = 2.0  # vehicles/sec per green approach
             moving["N"] = min(self.queues["N"], move_rate * dt)
             moving["S"] = min(self.queues["S"], move_rate * dt)
-            wait_N = moving["N"]
-            wait_S = moving["S"]
         else:
             # E and W can move
             move_rate = 2.0
             moving["E"] = min(self.queues["E"], move_rate * dt)
             moving["W"] = min(self.queues["W"], move_rate * dt)
-            wait_E = moving["E"]
-            wait_W = moving["W"]
 
         # Remove moved vehicles from queue, add wait time
         for approach in self.queues:
             self.queues[approach] -= moving[approach]
-            self.total_wait_time += getattr(self, f'wait_{approach}', 0) * moving[approach] if False else 0
 
         # Simplified wait time accumulation
         for approach in self.queues:

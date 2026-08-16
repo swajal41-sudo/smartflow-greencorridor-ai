@@ -28,7 +28,7 @@ def run_simulation(duration: float = 60.0):
         "duration": duration,
         "final_state": state,
         "optimized_green_time": round(adjusted_green, 2),
-        "phase_switches": state["phase"] == "E-W",  # simplified count
+        "phase_switches": 1 if state["phase"] == "E-W" else 0,
     }
 
 

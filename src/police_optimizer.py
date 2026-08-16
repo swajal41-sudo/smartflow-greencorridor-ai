@@ -20,8 +20,10 @@ class PoliceOptimizer:
         junctions = self.risk_engine.junctions
         per_junction = self.total_officers // len(junctions)
         remainder = self.total_officers % len(junctions)
+        self.baseline_deployment = {}
         for i, j in enumerate(junctions):
             self.baseline_deployment[j["id"]] = per_junction + (1 if i < remainder else 0)
+        return self.baseline_deployment
 
     def optimize(self) -> dict:
         """Run constrained allocation algorithm based on current risk scores."""
@@ -80,6 +82,9 @@ class PoliceOptimizer:
         baseline_coverage = sum(1 for d in deployment_report if d["baseline_officers"] > 0 and d["risk_score"] >= 50)
         high_risk_count = sum(1 for d in deployment_report if d["risk_score"] >= 50)
 
+        ai_pct = 100.0 if high_risk_count == 0 else round((ai_coverage / high_risk_count) * 100, 1)
+        baseline_pct = 100.0 if high_risk_count == 0 else round((baseline_coverage / high_risk_count) * 100, 1)
+
         return {
             "deployment": deployment_report,
             "unmanned_high_risk": unmanned_high_risk,
@@ -87,8 +92,8 @@ class PoliceOptimizer:
             "efficiency": {
                 "ai_high_risk_coverage": f"{ai_coverage}/{high_risk_count}",
                 "baseline_high_risk_coverage": f"{baseline_coverage}/{high_risk_count}",
-                "ai_coverage_pct": round((ai_coverage / max(1, high_risk_count)) * 100, 1),
-                "baseline_coverage_pct": round((baseline_coverage / max(1, high_risk_count)) * 100, 1)
+                "ai_coverage_pct": ai_pct,
+                "baseline_coverage_pct": baseline_pct
             }
         }
 
@@ -124,4 +129,5 @@ class PoliceOptimizer:
 
     def set_officers(self, count: int) -> dict:
         self.total_officers = max(4, min(50, count))
+        self.baseline_deployment = self._generate_baseline()
         return {"total_officers": self.total_officers}

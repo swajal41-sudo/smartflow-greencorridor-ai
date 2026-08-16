@@ -87,17 +87,20 @@ class GrievanceEngine:
         ]
         timeline = []
         base = time.time() - 3600
-        for i in range(min(up_to_index + 1, len(labels))):
+        for i, label in enumerate(labels):
+            if i < up_to_index:
+                status = "completed"
+                ts = base + i * 420
+            elif i == up_to_index:
+                status = "completed" if up_to_index == len(labels) - 1 else "in_progress"
+                ts = base + i * 420
+            else:
+                status = "pending"
+                ts = None
             timeline.append({
-                "step": labels[i],
-                "status": "completed",
-                "timestamp": base + i * 420
-            })
-        if up_to_index + 1 < len(labels):
-            timeline.append({
-                "step": labels[up_to_index + 1],
-                "status": "pending",
-                "timestamp": None
+                "step": label,
+                "status": status,
+                "timestamp": ts
             })
         return timeline
 
